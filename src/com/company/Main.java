@@ -20,34 +20,30 @@ public class Main extends JFrame {
     private int counter = 1;
     private String message;
     private JTextField editField;
-    private String editText;
     private JTextArea textView;
 
-    public Main(){
-        super("Chat Server");
+    public Main() {
+        super("Server");
         //create GUI container
         Container container = getContentPane();
         //create editText and attach listener to it
         editField = new JTextField();
         editField.setEditable(true);
-        editField.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                editText = e.getActionCommand();
-            }
+        editField.addActionListener(e -> {
+            sendMessage(e.getActionCommand());
+            editField.setText("");
         });
         //create Text view display area
-        textView = new JTextArea();
-        textView.setEditable(false);
         container.add(editField, BorderLayout.NORTH);
+        textView = new JTextArea();
         container.add(new JScrollPane(textView), BorderLayout.CENTER);
-        setSize(300,150);
+        setSize(500, 500);
         setVisible(true);
 
     }
 
     public static void main(String[] args) {
-	// write your code here
+        // write your code here
         Main server = new Main();
         server.createServer();
 
@@ -55,63 +51,100 @@ public class Main extends JFrame {
 
     //Step1: create server
     public void createServer() {
-        try {
+
         try {
             server = new ServerSocket(1234, 50);
             while (true) {
-                //step 2: wait for connection to connect
-                acceptConnection();
-                //step 3: get input and output streams
-                getStreams();
-                //step 4: process the connection
-                //step 5: close streams and socket
+                try {
+
+                    //step 2: wait for connection to connect
+                    acceptConnection();
+                    //step 3: get input and output streams
+                    getStreams();
+                    //step 4: process the connection
+                    processConnection();
+                    //step 5: close streams and socket
+                } catch (EOFException eofException) {
+                    System.err.println("server terminated connection");
+                } finally {
+                    //step 5: close connection
+                    closeConnection();
+                    ++counter;
+                }
+
             }
-        } catch (EOFException eofException) {
-            System.err.println("server terminated connection");
-        } finally {
-            //step 5: close connection
-            ++counter;
-        }
-    } catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     //step 2: wait for connection to connect and display message
-    public void acceptConnection() throws  IOException {
-        System.out.println("connecting...");
+    public void acceptConnection() throws IOException {
+        displayMessage("Waiting for connection\n");
         connection = server.accept();
-        System.out.println("connection "+counter+" received from: "+connection.getInetAddress().getHostAddress() );
+        displayMessage("connection " + counter + " received from: " + connection.getInetAddress().getHostAddress());
 
     }
 
     //step 3: get input and output streams
     public void getStreams() throws IOException {
-        System.out.println("getting streams");
-        objectOutputStream = new ObjectOutputStream((connection.getOutputStream()));
+        displayMessage("\nGetting streams\n");
+        objectOutputStream = new ObjectOutputStream(connection.getOutputStream());
         objectOutputStream.flush();
         objectInputStream = new ObjectInputStream(connection.getInputStream());
-        System.out.println("gotten streams");
+        displayMessage("\nGotten streams\n");
 
     }
 
     //step 4: process the connection
-    public void processConnection() throws IOException, ClassNotFoundException {
-       objectOutputStream.writeObject("Server>>>> connection successful");
-       objectOutputStream.flush();
-
-        message = (String) objectInputStream.readObject();
-        System.out.println("client said "+message);
+    public void processConnection() throws IOException {
+        String processMessage = "connection successful";
+        sendMessage(processMessage);
+        do{
+        try {
+            message = (String) objectInputStream.readObject();
+            displayMessage("\n "+message);
+        } catch (ClassNotFoundException classNotFoundException) {
+            displayMessage("\nUnknown object type found\n");
+        }
+        } while (!processMessage.equals("CLIENT>>> TERMINATE"));
 
     }
 
     //step 5: close streams and socket
-    public void closeConnection() throws IOException {
+    public void closeConnection() {
+        try {
         objectOutputStream.close();
         objectInputStream.close();
         connection.close();
+        } catch (IOException io){
+            io.printStackTrace();
+        }
     }
 
+    //step 6: create method for sending messages
+    public void sendMessage(String send) {
+        try {
+           objectOutputStream.writeObject("SERVER>>> " + send);
+            objectOutputStream.flush();
+            displayMessage("\nSERVER>>> \n" + send);
+        } catch (IOException io){
+            io.printStackTrace();
+        } finally {
+            textView.append("\nError writing object\n");
+        }
+
+    }
+
+    //step 7: update GUI with streams in another thread
+    public void displayMessage(String display) {
+        SwingUtilities.invokeLater(() -> {
+            textView.append(display);
+            //textView.setCaretPosition(textView.getText().length());
+        });
+
+
+    }
 
 
 }
