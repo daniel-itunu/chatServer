@@ -1,5 +1,9 @@
 package com.company;
 
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -8,24 +12,44 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 
-public class Main {
+public class Main extends JFrame {
     private ServerSocket server;
     private Socket connection;
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
     private int counter = 1;
     private String message;
+    private JTextField editField;
+    private String editText;
+    private JTextArea textView;
 
-     {
-         Scanner input = new Scanner(System.in);
-         input.nextLine();
+    public Main(){
+        super("Chat Server");
+        //create GUI container
+        Container container = getContentPane();
+        //create editText and attach listener to it
+        editField = new JTextField();
+        editField.setEditable(true);
+        editField.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                editText = e.getActionCommand();
+            }
+        });
+        //create Text view display area
+        textView = new JTextArea();
+        textView.setEditable(false);
+        container.add(editField, BorderLayout.NORTH);
+        container.add(new JScrollPane(textView), BorderLayout.CENTER);
+        setSize(300,150);
+        setVisible(true);
 
     }
 
     public static void main(String[] args) {
 	// write your code here
-        Main main = new Main();
-        main.createServer();
+        Main server = new Main();
+        server.createServer();
 
     }
 
@@ -62,7 +86,7 @@ public class Main {
     }
 
     //step 3: get input and output streams
-    public void getStreams() throws  IOException {
+    public void getStreams() throws IOException {
         System.out.println("getting streams");
         objectOutputStream = new ObjectOutputStream((connection.getOutputStream()));
         objectOutputStream.flush();
